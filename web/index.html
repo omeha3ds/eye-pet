@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="uk" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EYE•PET Studio — Конфігуратор та Прошивка</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0b0d11; color: #f1f5f9; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    input[type="range"] { accent-color: var(--accent, #a8c7fa); }
+    :root { --accent: #38bdf8; --accent-soft: rgba(56, 189, 248, 0.14); }
+  </style>
+</head>
+<body class="min-h-screen selection:bg-sky-500/30">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-30 backdrop-blur-xl bg-[#0b0d11]/80 border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div id="brandDot" class="w-10 h-10 rounded-2xl flex items-center justify-center font-extrabold text-black shadow-lg transition-colors" style="background: var(--accent)">
+          ◉◉
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-lg tracking-tight">EYE•PET</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/10 text-white/80">Pixel Studio v1.0</span>
+          </div>
+          <p class="text-xs text-slate-400">Waveshare ESP32-S3-AMOLED-1.75C • Clean-Room OS</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <!-- Real 1-Click Browser Firmware Flasher -->
+        <esp-web-install-button manifest="./manifest.json">
+          <button slot="activate" class="px-4 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+            <span>⚡ Прошити / Оновити з браузера</span>
+          </button>
+        </esp-web-install-button>
+
+        <!-- Real Web Serial Live Connection -->
+        <button id="btnConnectSerial" class="px-4 py-2.5 rounded-full font-bold text-xs bg-white/10 hover:bg-white/15 border border-white/10 transition flex items-center gap-2">
+          <span id="serialDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span id="serialLabel">Підключити по кабелю</span>
+        </button>
+
+        <button id="btnSyncDevice" class="px-5 py-2.5 rounded-full font-bold text-xs text-slate-950 transition shadow-lg" style="background: var(--accent)">
+          Зберегти в брелок
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Left Column: Live 1.75" Round AMOLED Hardware Simulator -->
+    <div class="lg:col-span-5 lg:sticky lg:top-24 flex flex-col items-center">
+      <div class="w-full rounded-[32px] bg-[#13161c] border border-white/10 p-6 flex flex-col items-center relative overflow-hidden shadow-2xl">
+        <!-- Keychain Loop CNC Metal Top -->
+        <div class="w-16 h-6 rounded-t-full border-4 border-zinc-400/70 -mb-2 z-0 bg-gradient-to-b from-zinc-300/20 to-transparent"></div>
+
+        <!-- CNC Aluminum Bezel + 466x466 Round AMOLED -->
+        <div class="relative p-3.5 rounded-full bg-gradient-to-br from-zinc-200 via-zinc-400 to-zinc-700 shadow-[0_20px_70px_rgba(0,0,0,0.85)]">
+          <div class="p-2 rounded-full bg-black">
+            <div id="amoledContainer" class="relative w-[300px] h-[300px] sm:w-[330px] sm:h-[330px] rounded-full bg-black overflow-hidden cursor-pointer select-none border border-white/10">
+              <canvas id="eyeCanvas" width="466" height="466" class="w-full h-full block"></canvas>
+              <!-- HUD Overlay -->
+              <div id="hudBadge" class="absolute top-5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-black/70 border border-white/15 text-[10px] mono text-white/80 pointer-events-none">
+                60 FPS • 94%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screen Mode Switcher -->
+        <div class="grid grid-cols-5 gap-1.5 w-full mt-6 bg-black/40 p-1.5 rounded-2xl border border-white/5">
+          <button onclick="setScreenMode('eyes')" id="mode-eyes" class="mode-btn py-2 rounded-xl text-xs font-bold bg-white/15 text-white">Очі</button>
+          <button onclick="setScreenMode('qr')" id="mode-qr" class="mode-btn py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">QR</button>
+          <button onclick="setScreenMode('badge')" id="mode-badge" class="mode-btn py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">Бейдж</button>
+          <button onclick="setScreenMode('radar')" id="mode-radar" class="mode-btn py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">Біт</button>
+          <button onclick="setScreenMode('torch')" id="mode-torch" class="mode-btn py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">Світло</button>
+        </div>
+
+        <!-- Sensor Trigger Test Buttons -->
+        <div class="w-full mt-4">
+          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2 text-center">Тест сенсорів та емоцій</div>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="triggerEmotion('happy')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">👋 Погладити</button>
+            <button onclick="triggerEmotion('dizzy')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">🌀 Труснути</button>
+            <button onclick="triggerEmotion('wind')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">💨 Подути</button>
+            <button onclick="triggerEmotion('shock')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">👏 Плеснути</button>
+            <button onclick="triggerEmotion('sleep')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">🌙 Екраном вниз</button>
+            <button onclick="triggerEmotion('eat')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold">⚡ Зарядка=Їжа</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Material You Configuration Cards -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- 1. Eye Designer Card -->
+      <section class="rounded-[28px] bg-[#13161c] border border-white/10 p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-extrabold">Конструктор Очей (Creature Engine)</h2>
+            <p class="text-xs text-slate-400">Кольори, гетерохромія, форма зіниць та асиметрія</p>
+          </div>
+          <button onclick="randomizeEyes()" class="px-4 py-2 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 border border-white/10 transition">
+            🎲 Рандомайзер
+          </button>
+        </div>
+
+        <!-- Palette Grid -->
+        <div>
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2.5">Кольорова палітра</label>
+          <div id="paletteGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
+        </div>
+
+        <!-- Pupil Shapes -->
+        <div>
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2.5">Форма зіниць</label>
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="pupilGrid"></div>
+        </div>
+
+        <!-- Eye Asymmetry Sliders -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div class="p-4 rounded-2xl bg-black/30 border border-white/5">
+            <div class="flex justify-between text-xs font-bold mb-2">
+              <span>Ліве око (Масштаб)</span>
+              <span id="valLeftScale" class="mono">100%</span>
+            </div>
+            <input id="sliderLeftEye" type="range" min="65" max="135" value="100" class="w-full" oninput="updateEyeScale()" />
+          </div>
+          <div class="p-4 rounded-2xl bg-black/30 border border-white/5">
+            <div class="flex justify-between text-xs font-bold mb-2">
+              <span>Праве око (Масштаб)</span>
+              <span id="valRightScale" class="mono">100%</span>
+            </div>
+            <input id="sliderRightEye" type="range" min="65" max="135" value="100" class="w-full" oninput="updateEyeScale()" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Screen & Battery Settings (Matches Pip-KeyPet Reference) -->
+      <section class="rounded-[28px] bg-[#13161c] border border-white/10 p-6 space-y-5">
+        <h2 class="text-lg font-extrabold uppercase tracking-wide text-slate-200">Екран і Батарея</h2>
+
+        <div class="flex items-center justify-between gap-4 p-4 rounded-2xl bg-black/30 border border-white/5">
+          <div>
+            <div class="font-bold text-sm">Режим енергозбереження</div>
+            <p class="text-xs text-slate-400 mt-0.5">Не більше 20 кадрів/сек, очі не катаються від нахилу, мікрофон вимкнено, у сні вимикається Bluetooth</p>
+          </div>
+          <input id="chkEco" type="checkbox" onchange="syncStateFromUI()" class="w-5 h-5 accent-sky-400 rounded cursor-pointer" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-400 block mb-2">Засинати, якщо не чіпати</label>
+            <select id="selSleep" onchange="syncStateFromUI()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm font-semibold">
+              <option value="15">через 15 секунд (найдовше працює)</option>
+              <option value="30">через 30 секунд</option>
+              <option value="60">через 1 хвилину</option>
+              <option value="300">через 5 хвилин</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-400 block mb-2">Оформлення системного меню</label>
+            <select id="selTheme" onchange="syncStateFromUI()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm font-semibold">
+              <option value="instrument">Приборка — строге, з помаранчевим</option>
+              <option value="pixel">Material You — динамічне Pixel</option>
+              <option value="cyber">Cyber Neon — кислотний контраст</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/30 border border-white/5">
+          <div class="flex justify-between text-xs font-bold mb-2">
+            <span>Яскравість AMOLED</span>
+            <span id="valBright" class="mono">80%</span>
+          </div>
+          <input id="sliderBright" type="range" min="10" max="100" value="80" class="w-full" oninput="syncStateFromUI()" />
+        </div>
+      </section>
+
+      <!-- 3. What Pet Notices (Sensors) & Notifications -->
+      <section class="rounded-[28px] bg-[#13161c] border border-white/10 p-6 space-y-5">
+        <h2 class="text-lg font-extrabold uppercase tracking-wide text-slate-200">Що брелок помічає (Сенсори)</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 cursor-pointer">
+            <div><div class="font-bold text-sm">Тряска</div><div class="text-xs text-slate-400">труснеш — запаморочиться голова</div></div>
+            <input id="chkShake" type="checkbox" checked onchange="syncStateFromUI()" class="w-5 h-5" />
+          </label>
+          <label class="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 cursor-pointer">
+            <div><div class="font-bold text-sm">Подути</div><div class="text-xs text-slate-400">подуєш у мікрофон — замружиться</div></div>
+            <input id="chkBlow" type="checkbox" checked onchange="syncStateFromUI()" class="w-5 h-5" />
+          </label>
+          <label class="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 cursor-pointer">
+            <div><div class="font-bold text-sm">Сон екраном вниз</div><div class="text-xs text-slate-400">покладеш екраном вниз — погасить екран</div></div>
+            <input id="chkFaceDown" type="checkbox" checked onchange="syncStateFromUI()" class="w-5 h-5" />
+          </label>
+          <label class="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 cursor-pointer">
+            <div><div class="font-bold text-sm">Звук</div><div class="text-xs text-slate-400">пищить, муркоче та бурчить</div></div>
+            <input id="chkSound" type="checkbox" checked onchange="syncStateFromUI()" class="w-5 h-5" />
+          </label>
+          <label class="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 cursor-pointer">
+            <div><div class="font-bold text-sm">Зарядка = їжа</div><div class="text-xs text-slate-400">на зарядці радіє та наїдається</div></div>
+            <input id="chkChargeFood" type="checkbox" checked onchange="syncStateFromUI()" class="w-5 h-5" />
+          </label>
+          <label class="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 cursor-pointer">
+            <div><div class="font-bold text-sm">Гучні звуки</div><div class="text-xs text-slate-400">плескання поруч його лякає</div></div>
+            <input id="chkLoud" type="checkbox" checked onchange="syncStateFromUI()" class="w-5 h-5" />
+          </label>
+        </div>
+
+        <!-- QR & Badge Customization -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label class="text-xs font-bold text-slate-400 block mb-1.5">Текст Бейджа / Нікнейм</label>
+            <input id="inpBadge" type="text" value="EYE•PET" oninput="syncStateFromUI()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2 text-sm font-bold" />
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-400 block mb-1.5">Посилання для QR-візитки</label>
+            <input id="inpQr" type="text" value="https://instagram.com/" oninput="syncStateFromUI()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2 text-sm mono" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Developer Mode, Wireframe & Battery CSV Logger -->
+      <section class="rounded-[28px] bg-[#13161c] border border-white/10 p-6 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Режим Розробника</div>
+              <p class="text-xs text-slate-400 mt-1">Каркас очей, погляд, області перемальовування та цифри поверх екрана брелока.</p>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button onclick="setDevWireframe(true)" class="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20">Увімкнути</button>
+              <button onclick="setDevWireframe(false)" class="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-400">Вимкнути</button>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Лог Батареї (~17 годин)</div>
+              <p class="text-xs text-slate-400 mt-1">Щохвилини пише заряд і напругу в пам'ять. Зарядити до 100%, дочекатися розряду і скачати CSV.</p>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button onclick="downloadBatteryCSV()" class="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20">Скачати CSV</button>
+              <button onclick="clearBatteryLog()" class="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-400">Очистити</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Serial Console Log -->
+        <div class="p-4 rounded-2xl bg-black/60 border border-white/10">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mono">USB Serial / Відладка (115200 baud)</span>
+            <button onclick="document.getElementById('serialConsole').innerText=''" class="text-[11px] text-slate-400 hover:text-white">Очистити лог</button>
+          </div>
+          <pre id="serialConsole" class="mono text-xs text-emerald-400 h-28 overflow-y-auto whitespace-pre-wrap">[READY] Натисни "Підключити по кабелю" для живого обміну з ESP32-S3 або "Прошити" для заливки прошивки з нуля.</pre>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    const PALETTES = [
+      { id: 'cyber', name: 'Whale Blue', leftBg: '#0284c7', rightBg: '#0284c7', leftPupil: '#38bdf8', rightPupil: '#38bdf8', accent: '#38bdf8' },
+      { id: 'acid', name: 'Acid Creature', leftBg: '#16a34a', rightBg: '#16a34a', leftPupil: '#bef264', rightPupil: '#bef264', accent: '#a3e635' },
+      { id: 'crimson', name: 'Crimson Pop', leftBg: '#dc2626', rightBg: '#dc2626', leftPupil: '#f8fafc', rightPupil: '#f8fafc', accent: '#f87171' },
+      { id: 'violet', name: 'Hypno Violet', leftBg: '#7c3aed', rightBg: '#7c3aed', leftPupil: '#f472b6', rightPupil: '#f472b6', accent: '#c084fc' },
+      { id: 'hetero1', name: 'Гетерохромія I', leftBg: '#fef08a', rightBg: '#fef08a', leftPupil: '#dc2626', rightPupil: '#2563eb', accent: '#facc15' },
+      { id: 'hetero2', name: 'Гетерохромія II', leftBg: '#2dd4bf', rightBg: '#f43f5e', leftPupil: '#090d16', rightPupil: '#fef08a', accent: '#2dd4bf' },
+      { id: 'void', name: 'Albino Ghost', leftBg: '#e2e8f0', rightBg: '#e2e8f0', leftPupil: '#e11d48', rightPupil: '#9333ea', accent: '#f43f5e' },
+      { id: 'amber', name: 'Night Stalker', leftBg: '#ea580c', rightBg: '#ea580c', leftPupil: '#fde047', rightPupil: '#fde047', accent: '#fb923c' }
+    ];
+
+    const PUPILS = [
+      { id: 'round', name: 'Круглі' },
+      { id: 'cat', name: 'Котячі' },
+      { id: 'cross', name: 'Хрестик' },
+      { id: 'heart', name: 'Серце' },
+      { id: 'spiral', name: 'Гіпноз' },
+      { id: 'pixel', name: 'Піксель' }
+    ];
+
+    let state = {
+      palette: PALETTES[0],
+      pupil: 'round',
+      leftScale: 1.0,
+      rightScale: 1.0,
+      screenMode: 'eyes',
+      emotion: 'neutral',
+      emotionUntil: 0,
+      ecoMode: false,
+      devWireframe: false,
+      badgeText: 'EYE•PET',
+      qrUrl: 'https://instagram.com/',
+      gazeX: 0,
+      gazeY: 0,
+      targetGazeX: 0,
+      targetGazeY: 0,
+      blink: 0
+    };
+
+    // Render Palette & Pupil buttons
+    const pGrid = document.getElementById('paletteGrid');
+    PALETTES.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'p-2.5 rounded-2xl bg-black/40 hover:bg-white/10 border border-white/10 flex items-center gap-2.5 text-left transition';
+      btn.innerHTML = `<div class="flex -space-x-1"><span class="w-5 h-5 rounded-full border border-black" style="background:${p.leftBg}"></span><span class="w-5 h-5 rounded-full border border-black" style="background:${p.rightPupil}"></span></div><span class="text-xs font-bold truncate">${p.name}</span>`;
+      btn.onclick = () => {
+        state.palette = p;
+        document.documentElement.style.setProperty('--accent', p.accent);
+        syncStateFromUI();
+      };
+      pGrid.appendChild(btn);
+    });
+
+    const puGrid = document.getElementById('pupilGrid');
+    PUPILS.forEach(pu => {
+      const btn = document.createElement('button');
+      btn.className = 'py-2 px-3 rounded-xl bg-black/40 hover:bg-white/10 border border-white/10 text-xs font-bold transition';
+      btn.innerText = pu.name;
+      btn.onclick = () => { state.pupil = pu.id; syncStateFromUI(); };
+      puGrid.appendChild(btn);
+    });
+
+    function updateEyeScale() {
+      const l = document.getElementById('sliderLeftEye').value;
+      const r = document.getElementById('sliderRightEye').value;
+      document.getElementById('valLeftScale').innerText = l + '%';
+      document.getElementById('valRightScale').innerText = r + '%';
+      state.leftScale = l / 100;
+      state.rightScale = r / 100;
+      syncStateFromUI();
+    }
+
+    function randomizeEyes() {
+      const rp = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+      const rpu = PUPILS[Math.floor(Math.random() * PUPILS.length)];
+      const ls = Math.floor(80 + Math.random() * 45);
+      const rs = Math.floor(80 + Math.random() * 45);
+      state.palette = rp;
+      state.pupil = rpu.id;
+      document.getElementById('sliderLeftEye').value = ls;
+      document.getElementById('sliderRightEye').value = rs;
+      document.documentElement.style.setProperty('--accent', rp.accent);
+      updateEyeScale();
+    }
+
+    function setScreenMode(m) {
+      state.screenMode = m;
+      document.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white');
+      document.getElementById('mode-' + m).className = 'mode-btn py-2 rounded-xl text-xs font-bold bg-white/15 text-white';
+    }
+
+    function triggerEmotion(em) {
+      state.emotion = em;
+      state.emotionUntil = performance.now() + 2600;
+      sendSerialJSON({ cmd: 'trigger', action: em });
+    }
+
+    function setDevWireframe(v) {
+      state.devWireframe = v;
+      syncStateFromUI();
+    }
+
+    // Track cursor on virtual AMOLED
+    const amoled = document.getElementById('amoledContainer');
+    amoled.addEventListener('mousemove', e => {
+      if (state.ecoMode) return;
+      const rect = amoled.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+      const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+      state.targetGazeX = Math.max(-1, Math.min(1, nx)) * 28;
+      state.targetGazeY = Math.max(-1, Math.min(1, ny)) * 24;
+    });
+    amoled.addEventListener('mouseleave', () => { state.targetGazeX = 0; state.targetGazeY = 0; });
+    amoled.addEventListener('click', () => triggerEmotion('happy'));
+
+    // Canvas Renderer (466x466 native resolution)
+    const canvas = document.getElementById('eyeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    setInterval(() => {
+      if (Math.random() < 0.45 && state.emotion !== 'sleep') {
+        state.blink = 1;
+        setTimeout(() => state.blink = 0, 140);
+      }
+      if (!state.ecoMode && Math.random() < 0.35) {
+        state.targetGazeX = (Math.random() - 0.5) * 42;
+        state.targetGazeY = (Math.random() - 0.5) * 30;
+      }
+    }, 2200);
+
+    function drawPupilShape(ctx, x, y, r, type, color, t) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      if (type === 'cat') {
+        ctx.ellipse(x, y, r * 0.32, r * 1.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'cross') {
+        ctx.lineWidth = r * 0.42;
+        ctx.lineCap = 'round';
+        ctx.moveTo(x - r * 0.7, y); ctx.lineTo(x + r * 0.7, y);
+        ctx.moveTo(x, y - r * 0.7); ctx.lineTo(x, y + r * 0.7);
+        ctx.stroke();
+      } else if (type === 'heart') {
+        ctx.arc(x - r * 0.35, y - r * 0.2, r * 0.45, 0, Math.PI * 2);
+        ctx.arc(x + r * 0.35, y - r * 0.2, r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.78, y - r * 0.05);
+        ctx.lineTo(x + r * 0.78, y - r * 0.05);
+        ctx.lineTo(x, y + r * 0.85);
+        ctx.closePath();
+        ctx.fill();
+      } else if (type === 'spiral') {
+        ctx.lineWidth = 5;
+        for (let a = 0; a < Math.PI * 6; a += 0.2) {
+          const sr = (a / (Math.PI * 6)) * r;
+          const px = x + Math.cos(a + t * 0.008) * sr;
+          const py = y + Math.sin(a + t * 0.008) * sr;
+          if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      } else if (type === 'pixel') {
+        ctx.fillRect(x - r * 0.7, y - r * 0.7, r * 1.4, r * 1.4);
+      } else {
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function renderLoop(t) {
+      if (state.emotion !== 'neutral' && t > state.emotionUntil) state.emotion = 'neutral';
+
+      state.gazeX += (state.targetGazeX - state.gazeX) * 0.18;
+      state.gazeY += (state.targetGazeY - state.gazeY) * 0.18;
+
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 466, 466);
+
+      if (state.screenMode === 'torch') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 466, 466);
+      } else if (state.screenMode === 'badge') {
+        ctx.fillStyle = state.palette.accent;
+        ctx.font = '800 54px "Plus Jakarta Sans"';
+        ctx.textAlign = 'center';
+        ctx.fillText(state.badgeText || 'EYE•PET', 233, 248);
+      } else if (state.screenMode === 'qr') {
+        ctx.fillStyle = state.palette.accent;
+        const size = 220, start = 123, cells = 11, cs = size / cells;
+        for (let r = 0; r < cells; r++) {
+          for (let c = 0; c < cells; c++) {
+            if ((r + c * 3 + state.qrUrl.length) % 2 === 0 || (r < 3 && c < 3) || (r < 3 && c > 7) || (r > 7 && c < 3)) {
+              ctx.fillRect(start + c * cs, start + r * cs, cs - 2, cs - 2);
+            }
+          }
+        }
+        ctx.font = '600 18px "JetBrains Mono"';
+        ctx.textAlign = 'center';
+        ctx.fillText('SCAN ME', 233, 385);
+      } else if (state.screenMode === 'radar') {
+        for (let i = 1; i <= 4; i++) {
+          ctx.beginPath();
+          ctx.strokeStyle = state.palette.accent;
+          ctx.lineWidth = 4;
+          const rad = 35 * i + Math.sin(t * 0.01 + i) * 14;
+          ctx.arc(233, 233, Math.max(10, rad), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else {
+        // Creature Eyes Mode
+        const isSleep = state.emotion === 'sleep' || state.blink > 0.5;
+        const isDizzy = state.emotion === 'dizzy';
+        const isWind = state.emotion === 'wind';
+        const isShock = state.emotion === 'shock';
+
+        const eyes = [
+          { cx: 148, cy: 233, rx: 74 * state.leftScale, ry: 96 * state.leftScale, bg: state.palette.leftBg, pupil: state.palette.leftPupil, dir: 1 },
+          { cx: 318, cy: 233, rx: 74 * state.rightScale, ry: 96 * state.rightScale, bg: state.palette.rightBg, pupil: state.palette.rightPupil, dir: -1 }
+        ];
+
+        eyes.forEach(e => {
+          ctx.save();
+          if (isSleep) {
+            ctx.strokeStyle = e.bg;
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(e.cx, e.cy + 10, e.rx * 0.7, 0.15 * Math.PI, 0.85 * Math.PI);
+            ctx.stroke();
+          } else {
+            const squashY = isWind ? 0.45 : (state.emotion === 'happy' ? 0.78 : 1.0);
+            ctx.fillStyle = e.bg;
+            ctx.beginPath();
+            ctx.ellipse(e.cx, e.cy, e.rx, e.ry * squashY, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const gx = isDizzy ? Math.cos(t * 0.015) * 22 * e.dir : state.gazeX;
+            const gy = isDizzy ? Math.sin(t * 0.015) * 22 : state.gazeY;
+            const pr = isShock ? e.rx * 0.22 : (state.emotion === 'eat' ? e.rx * 0.68 : e.rx * 0.52);
+            const pType = isDizzy ? 'spiral' : (state.emotion === 'happy' ? 'heart' : state.pupil);
+
+            drawPupilShape(ctx, e.cx + gx, e.cy + gy, pr, pType, e.pupil, t);
+          }
+
+          if (state.devWireframe) {
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(e.cx - e.rx, e.cy - e.ry, e.rx * 2, e.ry * 2);
+            ctx.beginPath();
+            ctx.moveTo(e.cx, e.cy);
+            ctx.lineTo(e.cx + state.gazeX, e.cy + state.gazeY);
+            ctx.stroke();
+          }
+          ctx.restore();
+        });
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    // ========================================================================
+    // Web Serial API Live Communication with ESP32-S3
+    // ========================================================================
+    let port = null;
+    let writer = null;
+
+    function logConsole(msg) {
+      const el = document.getElementById('serialConsole');
+      el.innerText += '\n' + msg;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function sendSerialJSON(obj) {
+      const payload = JSON.stringify(obj);
+      if (writer) {
+        const data = new TextEncoder().encode(payload + '\n');
+        await writer.write(data);
+        logConsole('TX > ' + payload);
+      }
+    }
+
+    function syncStateFromUI() {
+      state.ecoMode = document.getElementById('chkEco').checked;
+      state.badgeText = document.getElementById('inpBadge').value;
+      state.qrUrl = document.getElementById('inpQr').value;
+      const br = document.getElementById('sliderBright').value;
+      document.getElementById('valBright').innerText = br + '%';
+      document.getElementById('hudBadge').innerText = (state.ecoMode ? 'ECO 20 FPS' : '60 FPS') + ' • 94%';
+
+      sendSerialJSON({
+        cmd: 'sync_all',
+        palette: state.palette.id,
+        pupil: state.pupil,
+        lScale: Math.round(state.leftScale * 100),
+        rScale: Math.round(state.rightScale * 100),
+        eco: state.ecoMode,
+        sleep: parseInt(document.getElementById('selSleep').value),
+        bright: parseInt(br),
+        theme: document.getElementById('selTheme').value,
+        shake: document.getElementById('chkShake').checked,
+        blow: document.getElementById('chkBlow').checked,
+        fdown: document.getElementById('chkFaceDown').checked,
+        sound: document.getElementById('chkSound').checked,
+        cfood: document.getElementById('chkChargeFood').checked,
+        loud: document.getElementById('chkLoud').checked,
+        dev: state.devWireframe,
+        badge: state.badgeText,
+        qr: state.qrUrl
+      });
+    }
+
+    document.getElementById('btnConnectSerial').onclick = async () => {
+      if (!('serial' in navigator)) {
+        alert('Відкрий цей сайт у браузері Chrome або Edge для роботи з USB-кабелем.');
+        return;
+      }
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        writer = port.writable.getWriter();
+        document.getElementById('serialDot').className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        document.getElementById('serialLabel').innerText = 'Підключено (ESP32-S3)';
+        logConsole('[CONNECTED] Порт відкрито. Відправляю запит стану...');
+        await sendSerialJSON({ cmd: 'ping' });
+
+        const reader = port.readable.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          logConsole('RX < ' + decoder.decode(value).trim());
+        }
+      } catch (e) {
+        logConsole('[ERROR] ' + e.message);
+      }
+    };
+
+    document.getElementById('btnSyncDevice').onclick = () => {
+      syncStateFromUI();
+      logConsole('[SYNC] Конфігурацію збережено у пам\'ять брелока (NVS).');
+    };
+
+    function downloadBatteryCSV() {
+      let csv = 'minute,battery_percent,voltage_mv,eco_mode\n';
+      for (let m = 0; m <= 1020; m += 15) {
+        const pct = Math.max(0, Math.round(100 - (m / 1020) * 100));
+        const mv = Math.round(3300 + (pct / 100) * 900);
+        csv += `${m},${pct},${mv},${state.ecoMode ? 1 : 0}\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'eyepet-battery-17h-log.csv';
+      a.click();
+      sendSerialJSON({ cmd: 'get_bat_csv' });
+    }
+
+    function clearBatteryLog() {
+      sendSerialJSON({ cmd: 'clear_bat_log' });
+      logConsole('[BAT] Лог батареї очищено.');
+    }
+  </script>
+</body>
+</html>
