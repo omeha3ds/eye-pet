@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EYE•PET Studio — Конфігуратор та Прошивка</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
@@ -25,21 +26,19 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="font-extrabold text-lg tracking-tight">EYE•PET</span>
-            <span class="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/10 text-white/80">Pixel Studio v1.0</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/10 text-white/80">Pixel Studio v1.1</span>
           </div>
           <p class="text-xs text-slate-400">Waveshare ESP32-S3-AMOLED-1.75C • Clean-Room OS</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5 flex-wrap">
-        <!-- Real 1-Click Browser Firmware Flasher -->
         <esp-web-install-button manifest="./manifest.json">
           <button slot="activate" class="px-4 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
             <span>⚡ Прошити / Оновити з браузера</span>
           </button>
         </esp-web-install-button>
 
-        <!-- Real Web Serial Live Connection -->
         <button id="btnConnectSerial" class="px-4 py-2.5 rounded-full font-bold text-xs bg-white/10 hover:bg-white/15 border border-white/10 transition flex items-center gap-2">
           <span id="serialDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
           <span id="serialLabel">Підключити по кабелю</span>
@@ -58,15 +57,12 @@
     <!-- Left Column: Live 1.75" Round AMOLED Hardware Simulator -->
     <div class="lg:col-span-5 lg:sticky lg:top-24 flex flex-col items-center">
       <div class="w-full rounded-[32px] bg-[#13161c] border border-white/10 p-6 flex flex-col items-center relative overflow-hidden shadow-2xl">
-        <!-- Keychain Loop CNC Metal Top -->
         <div class="w-16 h-6 rounded-t-full border-4 border-zinc-400/70 -mb-2 z-0 bg-gradient-to-b from-zinc-300/20 to-transparent"></div>
 
-        <!-- CNC Aluminum Bezel + 466x466 Round AMOLED -->
         <div class="relative p-3.5 rounded-full bg-gradient-to-br from-zinc-200 via-zinc-400 to-zinc-700 shadow-[0_20px_70px_rgba(0,0,0,0.85)]">
           <div class="p-2 rounded-full bg-black">
             <div id="amoledContainer" class="relative w-[300px] h-[300px] sm:w-[330px] sm:h-[330px] rounded-full bg-black overflow-hidden cursor-pointer select-none border border-white/10">
               <canvas id="eyeCanvas" width="466" height="466" class="w-full h-full block"></canvas>
-              <!-- HUD Overlay -->
               <div id="hudBadge" class="absolute top-5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-black/70 border border-white/15 text-[10px] mono text-white/80 pointer-events-none">
                 60 FPS • 94%
               </div>
@@ -113,19 +109,16 @@
           </button>
         </div>
 
-        <!-- Palette Grid -->
         <div>
           <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2.5">Кольорова палітра</label>
           <div id="paletteGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
         </div>
 
-        <!-- Pupil Shapes -->
         <div>
           <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2.5">Форма зіниць</label>
           <div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="pupilGrid"></div>
         </div>
 
-        <!-- Eye Asymmetry Sliders -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div class="p-4 rounded-2xl bg-black/30 border border-white/5">
             <div class="flex justify-between text-xs font-bold mb-2">
@@ -144,7 +137,7 @@
         </div>
       </section>
 
-      <!-- 2. Screen & Battery Settings (Matches Pip-KeyPet Reference) -->
+      <!-- 2. Screen & Battery Settings -->
       <section class="rounded-[28px] bg-[#13161c] border border-white/10 p-6 space-y-5">
         <h2 class="text-lg font-extrabold uppercase tracking-wide text-slate-200">Екран і Батарея</h2>
 
@@ -186,7 +179,7 @@
         </div>
       </section>
 
-      <!-- 3. What Pet Notices (Sensors) & Notifications -->
+      <!-- 3. What Pet Notices (Sensors) & QR/Badge -->
       <section class="rounded-[28px] bg-[#13161c] border border-white/10 p-6 space-y-5">
         <h2 class="text-lg font-extrabold uppercase tracking-wide text-slate-200">Що брелок помічає (Сенсори)</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -220,11 +213,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div>
             <label class="text-xs font-bold text-slate-400 block mb-1.5">Текст Бейджа / Нікнейм</label>
-            <input id="inpBadge" type="text" value="EYE•PET" oninput="syncStateFromUI()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2 text-sm font-bold" />
+            <input id="inpBadge" type="text" value="штучка" oninput="onBadgeInput()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2 text-sm font-bold" />
           </div>
           <div>
-            <label class="text-xs font-bold text-slate-400 block mb-1.5">Посилання для QR-візитки</label>
-            <input id="inpQr" type="text" value="https://instagram.com/" oninput="syncStateFromUI()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2 text-sm mono" />
+            <label class="text-xs font-bold text-slate-400 block mb-1.5">Посилання для QR-візитки (живий скан)</label>
+            <input id="inpQr" type="text" value="https://www.instagram.com/" oninput="onQrInput()" class="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2 text-sm mono" />
           </div>
         </div>
       </section>
@@ -255,7 +248,6 @@
           </div>
         </div>
 
-        <!-- Serial Console Log -->
         <div class="p-4 rounded-2xl bg-black/60 border border-white/10">
           <div class="flex justify-between items-center mb-2">
             <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mono">USB Serial / Відладка (115200 baud)</span>
@@ -299,14 +291,51 @@
       emotionUntil: 0,
       ecoMode: false,
       devWireframe: false,
-      badgeText: 'EYE•PET',
-      qrUrl: 'https://instagram.com/',
+      badgeText: 'штучка',
+      qrUrl: 'https://www.instagram.com/',
+      qrMatrix: null,
       gazeX: 0,
       gazeY: 0,
       targetGazeX: 0,
       targetGazeY: 0,
       blink: 0
     };
+
+    // Real ISO QR Code Matrix Builder
+    function rebuildQrMatrix(text) {
+      try {
+        const clean = (text && text.trim().length > 0) ? text.trim() : 'https://github.com/omeha3ds/eye-pet';
+        const qr = qrcode(0, 'M');
+        qr.addData(clean);
+        qr.make();
+        const count = qr.getModuleCount();
+        const matrix = [];
+        for (let r = 0; r < count; r++) {
+          const row = [];
+          for (let c = 0; c < count; c++) {
+            row.push(qr.isDark(r, c));
+          }
+          matrix.push(row);
+        }
+        state.qrMatrix = matrix;
+      } catch (e) {
+        console.error('QR error:', e);
+      }
+    }
+    rebuildQrMatrix(state.qrUrl);
+
+    function onQrInput() {
+      state.qrUrl = document.getElementById('inpQr').value;
+      rebuildQrMatrix(state.qrUrl);
+      setScreenMode('qr'); // Automatically switch simulator to QR screen so user sees it live
+      syncStateFromUI();
+    }
+
+    function onBadgeInput() {
+      state.badgeText = document.getElementById('inpBadge').value;
+      setScreenMode('badge');
+      syncStateFromUI();
+    }
 
     // Render Palette & Pupil buttons
     const pGrid = document.getElementById('paletteGrid');
@@ -457,18 +486,43 @@
         ctx.textAlign = 'center';
         ctx.fillText(state.badgeText || 'EYE•PET', 233, 248);
       } else if (state.screenMode === 'qr') {
-        ctx.fillStyle = state.palette.accent;
-        const size = 220, start = 123, cells = 11, cs = size / cells;
-        for (let r = 0; r < cells; r++) {
-          for (let c = 0; c < cells; c++) {
-            if ((r + c * 3 + state.qrUrl.length) % 2 === 0 || (r < 3 && c < 3) || (r < 3 && c > 7) || (r > 7 && c < 3)) {
-              ctx.fillRect(start + c * cs, start + r * cs, cs - 2, cs - 2);
+        // Real Scannable QR Code with High-Contrast White Quiet Zone Card
+        if (state.qrMatrix && state.qrMatrix.length > 0) {
+          const count = state.qrMatrix.length;
+          const cardSize = 276;
+          const cardX = (466 - cardSize) / 2;
+          const cardY = 68;
+
+          // Rounded white card for guaranteed camera contrast on round AMOLED
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardSize, cardSize, 24);
+          ctx.fill();
+
+          const padding = 20;
+          const qrDrawSize = cardSize - padding * 2;
+          const cellSize = qrDrawSize / count;
+          const startX = cardX + padding;
+          const startY = cardY + padding;
+
+          ctx.fillStyle = '#090d16';
+          for (let r = 0; r < count; r++) {
+            for (let c = 0; c < count; c++) {
+              if (state.qrMatrix[r][c]) {
+                ctx.fillRect(
+                  Math.floor(startX + c * cellSize),
+                  Math.floor(startY + r * cellSize),
+                  Math.ceil(cellSize),
+                  Math.ceil(cellSize)
+                );
+              }
             }
           }
         }
-        ctx.font = '600 18px "JetBrains Mono"';
+        ctx.fillStyle = state.palette.accent;
+        ctx.font = '700 18px "JetBrains Mono"';
         ctx.textAlign = 'center';
-        ctx.fillText('SCAN ME', 233, 385);
+        ctx.fillText((state.badgeText || 'SCAN ME').toUpperCase(), 233, 382);
       } else if (state.screenMode === 'radar') {
         for (let i = 1; i <= 4; i++) {
           ctx.beginPath();
@@ -479,7 +533,6 @@
           ctx.stroke();
         }
       } else {
-        // Creature Eyes Mode
         const isSleep = state.emotion === 'sleep' || state.blink > 0.5;
         const isDizzy = state.emotion === 'dizzy';
         const isWind = state.emotion === 'wind';
@@ -531,9 +584,6 @@
     }
     requestAnimationFrame(renderLoop);
 
-    // ========================================================================
-    // Web Serial API Live Communication with ESP32-S3
-    // ========================================================================
     let port = null;
     let writer = null;
 
